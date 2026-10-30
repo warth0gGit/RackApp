@@ -1,0 +1,64 @@
+{
+  "id": "self-playing-pluck",
+  "title": "A self-playing plucked melody",
+  "summary": "Use Pam's as clock and random melody source, Maths as the envelope, and Dixie II+ through Ripples for a plucked voice that plays itself, then add space with Beads.",
+  "goal": "A plucked, in-key melody that plays on its own in time with Pam's, with a granular shimmer behind it.",
+  "category": "Generative",
+  "level": "Beginner",
+  "created": "2026-10-30",
+  "origin": "Example walkthrough that ships with RackApp",
+  "modules": ["pams-new-workout", "maths", "dixie-ii-plus", "ripples", "beads", "veils"],
+  "youNeed": ["7 patch cables", "Headphones or a mixer connected to Veils output 4"],
+  "patch": [
+    { "from": "Pam's · Output 1", "to": "Maths · Ch 1 Trigger", "note": "x2 gate, one pluck per eighth note" },
+    { "from": "Pam's · Output 2", "to": "Dixie II+ · 1V/Oct", "note": "random wave, quantized" },
+    { "from": "Dixie II+ · Saw", "to": "Ripples · In 2", "note": "" },
+    { "from": "Maths · Ch 1 Unity", "to": "Ripples · Level", "note": "the envelope opens the VCA" },
+    { "from": "Ripples · LP", "to": "Beads · In L", "note": "" },
+    { "from": "Beads · Out L", "to": "Veils · In 1", "note": "" },
+    { "from": "Pam's · Output 3", "to": "Beads · Seed", "note": "x1 gate, one grain per beat" }
+  ],
+  "sections": [
+    {
+      "title": "Set up the clock and the melody on Pam's",
+      "intro": "Pam's does two jobs here: it keeps time and it invents the notes.",
+      "steps": [
+        { "do": "Set the BPM to about **100** and press **Start/Stop**.", "why": "" },
+        { "do": "Set **Output 1** to **x2** with **Wave → Gate**.", "why": "Two pulses per beat gives you eighth notes." },
+        { "do": "Set **Output 2** to **x2**, **Wave → Random**, **Level** about 40%, and **Quant → Pentatonic Major (PM)**.", "why": "Quantizing snaps the random voltage to notes that always sound good together." },
+        { "do": "On Output 2, set **Loop** to **4**.", "why": "The random melody now repeats every four beats instead of wandering forever." },
+        { "do": "Set **Output 3** to **x1**, **Wave → Gate**.", "why": "" }
+      ],
+      "note": ""
+    },
+    {
+      "title": "Make the pluck",
+      "intro": "Maths turns each gate into a short envelope, and Ripples uses it to open both the filter and the VCA.",
+      "steps": [
+        { "do": "On Maths channel 1, turn **Rise** fully counter-clockwise and **Fall** to about 10 o'clock.", "why": "Instant attack with a short decay is what makes it sound plucked." },
+        { "do": "Set channel 1 **Vari-Response** to about 2 o'clock (exponential).", "why": "" },
+        { "do": "On Dixie II+, pick a middle **Octave** and tune it.", "why": "" },
+        { "do": "On Ripples, set **Frequency** to about 11 o'clock and **Resonance** to about 10 o'clock. Patch Maths **Ch 1 Unity** into Ripples **FM** as well if you want the filter to move with each note.", "why": "" }
+      ],
+      "note": "If it's too clicky, turn Maths Rise up just a touch."
+    },
+    {
+      "title": "Add space with Beads",
+      "intro": "",
+      "steps": [
+        { "do": "Set Beads **Density** to 12 o'clock and **Size** to about 2 o'clock.", "why": "With SEED clocked from Pam's, each beat triggers a grain." },
+        { "do": "Raise **Feedback** and **Reverb** slowly until the notes bloom.", "why": "" },
+        { "do": "Bring up Veils channel 1 and listen from **Output 4**.", "why": "Veils outputs sum down into output 4 when the earlier outputs aren't patched." }
+      ],
+      "note": ""
+    }
+  ],
+  "troubleshooting": [
+    { "problem": "The notes are out of tune with each other", "fix": "Check Quant on Pam's Output 2 is not set to NO, and that Dixie II+ tracks properly against a tuner." },
+    { "problem": "No sound at all", "fix": "Ripples' VCA needs the envelope in LEVEL. Check Maths channel 1 is actually being triggered (its LED should flash)." }
+  ],
+  "sources": [
+    { "label": "Pamela's NEW Workout manual (ALM)", "url": "https://assets.busycircuits.com/docs/alm017-manual.pdf" },
+    { "label": "Maths manual (Make Noise)", "url": "https://www.makenoise-manuals.com/maths/maths-manual.pdf" }
+  ]
+}

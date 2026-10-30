@@ -1,0 +1,42 @@
+{
+ "rackName": "Example Rack",
+ "cases": [
+  {
+   "id": "A",
+   "name": "Main case",
+   "type": "Example 3U case, 84 HP",
+   "note": "A small sample system for trying RackApp",
+   "photo": null,
+   "rows": [
+    { "label": "Single row: clock, modulation, voice, filter, VCA, texture",
+      "modules": ["pams-new-workout", "maths", "dixie-ii-plus", "ripples", "veils", "beads", "blank-1"] }
+   ]
+  }
+ ],
+ "desk": [],
+ "systemFacts": [
+  "This is an example rack that ships with RackApp, so you can try the app before setting up your own.",
+  "Pam's NEW Workout is the master clock. Its outputs are 0–5 V, so boost them with Veils or Maths when a module wants a bigger signal."
+ ],
+ "modules": {
+  "pams-new-workout": { "name": "Pamela's NEW Workout", "maker": "ALM Busy Circuits", "hp": 8, "category": "clock", "panel": "silver",
+    "short": "Master clock and 8-output modulation generator",
+    "notes": "- **Role here:** the master clock. Every output can be a clock ratio or a rhythmic waveform (gate, triangle, sine, envelope, random).\n- **Good partners:** Maths trigger inputs, Beads SEED, Dixie II+ pitch via a quantized random output." },
+  "maths": { "name": "Maths", "maker": "Make Noise", "hp": 20, "category": "modulation", "panel": "silver",
+    "short": "Dual function generator and analog computer",
+    "notes": "- **Role here:** envelopes, LFOs, slew and offsets.\n- **Good partners:** a Pam's gate into ch 1 Trigger for plucked envelopes; ch 1 Unity out into Ripples LEVEL." },
+  "dixie-ii-plus": { "name": "Dixie II+", "maker": "Intellijel", "hp": 8, "category": "oscillator", "panel": "silver",
+    "short": "Analog triangle-core VCO and LFO",
+    "notes": "- **Role here:** the main oscillator.\n- **Good partners:** saw or pulse into Ripples; FM from Maths for growls." },
+  "ripples": { "name": "Ripples", "maker": "Mutable Instruments", "hp": 8, "category": "filter", "panel": "silver",
+    "short": "Multimode filter with built-in VCA (2020)",
+    "notes": "- **Role here:** filter and VCA in one, so one envelope into LEVEL finishes a voice.\n- **Good partners:** Dixie II+ into IN; Maths into FM and LEVEL." },
+  "veils": { "name": "Veils", "maker": "Mutable Instruments", "hp": 10, "category": "vca", "panel": "silver",
+    "short": "Quad VCA and mixer",
+    "notes": "- **Role here:** final levels, mixing, and scaling modulation.\n- **Good partners:** boosting Pam's 0–5 V shapes; mixing the voice and Beads." },
+  "beads": { "name": "Beads", "maker": "Mutable Instruments", "hp": 14, "category": "effect", "panel": "silver",
+    "short": "Granular texture synthesizer",
+    "notes": "- **Role here:** granular texture, delay and reverb at the end of the chain.\n- **Good partners:** Ripples LP out into IN L; a Pam's clock into SEED." },
+  "blank-1": { "name": "Blank", "maker": "", "hp": 16, "category": "power", "panel": "dark", "short": "Empty space", "kind": "blank" }
+ }
+}

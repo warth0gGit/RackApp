@@ -1,0 +1,7 @@
+# Your own rack data and builds never get committed
+my-rack/
+my-rack.bak-*/
+dist/
+node_modules/
+.DS_Store
+__pycache__/

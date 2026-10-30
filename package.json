@@ -1,0 +1,12 @@
+{
+  "name": "rackapp",
+  "private": true,
+  "description": "Turn photos of your Eurorack rack into a personal app with manuals, walkthroughs and a guided tour.",
+  "scripts": {
+    "build:example": "python3 tools/build.py example-rack dist",
+    "test": "python3 tools/build.py example-rack dist && node tests/smoke.js"
+  },
+  "devDependencies": {
+    "playwright": "^1.47.0"
+  }
+}

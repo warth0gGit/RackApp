@@ -1,0 +1,986 @@
+<title>RackApp</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@62..125,400..800&family=JetBrains+Mono:wght@400;600&display=swap">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/marked/12.0.2/marked.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/dompurify/3.1.6/purify.min.js"></script>
+<style>
+/* Layout: a workbench page. Sticky tab bar, then one of three rooms: the rack (drawn to HP scale, detail rail on the right),
+   the manuals (ask box over a library + reader), the walkthroughs (cards → one consistent step-by-step sheet). */
+:root {
+  --bg: #e3e6e9;          /* brushed aluminium */
+  --surface: #f5f6f7;
+  --surface-2: #eceef0;
+  --ink: #14171b;
+  --ink-2: #4a525c;
+  --ink-3: #737c87;
+  --line: #c8cdd3;
+  --accent: #d9531f;      /* orange patch cable */
+  --accent-soft: #f6d9cc;
+  --accent-ink: #ffffff;
+  --cable-purple: #7a4fd2;
+  --cable-red: #d33b4a;
+  --cable-green: #6f9a3a;
+  --cable-blue: #2f7fc1;
+  --wood: #9a6438;
+  --wood-dark: #6d4424;
+  --case: #2a2e33;
+  --rail: #8f969d;
+  --panel-silver: #d7dadd;
+  --panel-silver-ink: #23272c;
+  --panel-dark: #1d2024;
+  --panel-dark-ink: #e9ebee;
+  --panel-white: #f4f4f1;
+  --panel-white-ink: #22262a;
+  --jack: #0f1113;
+  --mark: #ffe08a;
+  --ok: #2f8a57;
+  --warn: #b7791f;
+  --danger: #c0392b;
+  --shadow: 0 1px 2px rgba(20,23,27,.08), 0 6px 18px rgba(20,23,27,.08);
+  --f-display: "Archivo", "Helvetica Neue", Arial, sans-serif;
+  --f-body: "Archivo", "Helvetica Neue", Arial, sans-serif;
+  --f-mono: "JetBrains Mono", ui-monospace, "SF Mono", Menlo, monospace;
+  --r: 6px;
+}
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) {
+  --bg: #111316; --surface: #191c20; --surface-2: #20242a; --ink: #e8eaed; --ink-2: #a3acb6; --ink-3: #7c8691;
+  --line: #2e333a; --accent: #ff7440; --accent-soft: #3a2218; --accent-ink: #160b06; --case: #0b0c0e; --rail: #59606a;
+  --mark: #6b5414; --shadow: 0 1px 2px rgba(0,0,0,.4), 0 8px 24px rgba(0,0,0,.35); color-scheme: dark } }
+:root[data-theme="dark"] {
+  --bg: #111316; --surface: #191c20; --surface-2: #20242a; --ink: #e8eaed; --ink-2: #a3acb6; --ink-3: #7c8691;
+  --line: #2e333a; --accent: #ff7440; --accent-soft: #3a2218; --accent-ink: #160b06; --case: #0b0c0e; --rail: #59606a;
+  --mark: #6b5414; --shadow: 0 1px 2px rgba(0,0,0,.4), 0 8px 24px rgba(0,0,0,.35); color-scheme: dark }
+
+/* category colours, mid-tone so they read on both grounds */
+:root {
+  --c-clock: #e0612d; --c-sequencer: #c99712; --c-modulation: #2f9a74; --c-envelope: #3a86c8; --c-vca: #8a67d8;
+  --c-utility: #7f8a96; --c-oscillator: #d5487a; --c-voice: #c75b2a; --c-filter: #129aa8; --c-effect: #6a5ad6;
+  --c-sampler: #b4459c; --c-io: #5b8a3c; --c-mixer: #3f6fa8; --c-controller: #a07f2b; --c-measurement: #239b8e;
+  --c-random: #c2453d; --c-power: #59606a;
+}
+
+* { box-sizing: border-box; }
+[hidden] { display: none !important; }
+body { background: var(--bg); color: var(--ink); font-family: var(--f-body); font-size: 15px; line-height: 1.55;
+  font-variation-settings: "wdth" 100; -webkit-font-smoothing: antialiased; }
+a { color: inherit; }
+button { font: inherit; color: inherit; }
+:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.wrap { max-width: 1320px; margin: 0 auto; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); }
+
+/* ---------- header ---------- */
+.top { position: sticky; top: env(safe-area-inset-top, 0px); z-index: 20; background: color-mix(in srgb, var(--bg) 88%, transparent);
+  backdrop-filter: blur(10px); border-bottom: 1px solid var(--line); }
+.top .wrap { display: flex; align-items: center; gap: 24px; padding-block: 10px; flex-wrap: wrap; }
+.brand { display: flex; align-items: baseline; gap: 12px; min-width: 0; }
+.brand h1 { margin: 0; font-family: var(--f-display); font-size: 22px; font-weight: 800; letter-spacing: -.01em;
+  font-variation-settings: "wdth" 118; white-space: nowrap; }
+.brand .stat { font-family: var(--f-mono); font-size: 12px; color: var(--ink-3); white-space: nowrap; }
+.tour-btn { margin-left: auto; }
+.tabs { display: flex; gap: 4px; background: var(--surface-2); border: 1px solid var(--line); border-radius: 999px; padding: 3px; }
+.tab { border: 0; background: transparent; padding: 6px 14px; border-radius: 999px; cursor: pointer; font-weight: 600; font-size: 14px;
+  font-variation-settings: "wdth" 90; color: var(--ink-2); display: flex; align-items: center; gap: 8px; }
+.tab[aria-selected="true"] { background: var(--ink); color: var(--bg); }
+.tab .jack-dot { width: 8px; height: 8px; border-radius: 50%; background: currentColor; opacity: .5; }
+.tab[aria-selected="true"] .jack-dot { background: var(--accent); opacity: 1; }
+@media (max-width: 640px) { .tour-btn { order: 2; padding: 5px 10px; font-size: 13px; } .tabs { order: 3; } .tabs { margin-left: 0; width: 100%; } .tab { flex: 1; justify-content: center; padding: 6px 8px; } .brand .stat { display: none; } }
+
+main { padding-block: 24px 64px; }
+.room[hidden] { display: none !important; }
+.eyebrow { font-size: 11px; font-weight: 700; letter-spacing: .12em; text-transform: uppercase; color: var(--ink-3); font-variation-settings: "wdth" 80; }
+.room-head { display: flex; align-items: end; justify-content: space-between; gap: 16px; flex-wrap: wrap; margin-bottom: 18px; }
+.room-head h2 { margin: 2px 0 0; font-family: var(--f-display); font-size: clamp(26px, 3.4vw, 36px); line-height: 1.05; font-weight: 800;
+  font-variation-settings: "wdth" 115; letter-spacing: -.015em; text-wrap: balance; }
+.room-head p { margin: 6px 0 0; color: var(--ink-2); max-width: 62ch; }
+.btn { display: inline-flex; align-items: center; gap: 8px; border: 1px solid var(--line); background: var(--surface); padding: 7px 12px;
+  border-radius: var(--r); cursor: pointer; font-weight: 600; font-size: 13.5px; text-decoration: none; white-space: nowrap; }
+.btn:hover { border-color: var(--ink-3); }
+.btn.primary { background: var(--accent); border-color: var(--accent); color: var(--accent-ink); }
+.btn.primary:hover { filter: brightness(1.05); }
+.btn.ghost { background: transparent; }
+.btn[disabled] { opacity: .5; cursor: not-allowed; }
+.chip { display: inline-flex; align-items: center; gap: 6px; font-size: 12px; font-weight: 600; padding: 2px 9px 2px 7px; border-radius: 999px;
+  border: 1px solid var(--line); background: var(--surface); white-space: nowrap; cursor: pointer; font-variation-settings: "wdth" 88; }
+.chip i { width: 8px; height: 8px; border-radius: 50%; display: inline-block; flex: none; }
+.chip[aria-pressed="true"] { background: var(--ink); color: var(--bg); border-color: var(--ink); }
+.chips { display: flex; flex-wrap: wrap; gap: 6px; }
+.mono { font-family: var(--f-mono); font-size: 12px; }
+.muted { color: var(--ink-2); }
+input[type="search"], input[type="text"], textarea, select { font: inherit; color: var(--ink); background: var(--surface); border: 1px solid var(--line);
+  border-radius: var(--r); padding: 9px 12px; width: 100%; }
+textarea { resize: vertical; min-height: 64px; }
+input:focus, textarea:focus, select:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-soft); }
+
+/* ---------- rack ---------- */
+.rack-layout { display: grid; grid-template-columns: minmax(0, 1fr) 360px; gap: 24px; align-items: start; }
+@media (max-width: 1100px) { .rack-layout { grid-template-columns: minmax(0, 1fr); } }
+.filterbar { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; margin-bottom: 16px; }
+.filterbar .eyebrow { margin-right: 4px; }
+.cases { display: flex; flex-direction: column; gap: 26px; min-width: 0; }
+.case-block { min-width: 0; }
+.case-title { display: flex; align-items: baseline; gap: 10px; margin-bottom: 8px; flex-wrap: wrap; }
+.case-title h3 { margin: 0; font-size: 17px; font-weight: 800; font-variation-settings: "wdth" 112; }
+.case-title .mono { color: var(--ink-3); }
+.case-title .seg { margin-left: auto; display: flex; gap: 2px; background: var(--surface-2); border: 1px solid var(--line); border-radius: 6px; padding: 2px; }
+.seg button { border: 0; background: transparent; font-size: 12px; font-weight: 600; padding: 3px 9px; border-radius: 4px; cursor: pointer; color: var(--ink-2); }
+.seg button[aria-pressed="true"] { background: var(--surface); color: var(--ink); box-shadow: var(--shadow); }
+.scroller { overflow-x: auto; -webkit-overflow-scrolling: touch; padding-bottom: 6px; }
+.case { min-width: calc(var(--hp, 88) * 9.8px); display: grid; grid-template-columns: 18px 1fr 18px; border-radius: 8px; overflow: hidden; box-shadow: var(--shadow); }
+.cheek { background: linear-gradient(90deg, var(--wood-dark), var(--wood) 40%, var(--wood-dark)); }
+.case-body { background: var(--case); padding: 10px 8px; display: flex; flex-direction: column; gap: 10px; }
+.row { position: relative; display: flex; aspect-ratio: var(--hp, 90) / 24.5; gap: 0; padding-block: 7px; }
+.row::before, .row::after { content: ""; position: absolute; left: 0; right: 0; height: 7px; background: repeating-linear-gradient(90deg, var(--rail) 0 3px, color-mix(in srgb, var(--rail) 70%, black) 3px 4px); opacity: .8; }
+.row::before { top: 0; } .row::after { bottom: 0; }
+.panel { position: relative; min-width: 0; height: 100%; border: 0; padding: 0; margin: 0 .5px; cursor: pointer; overflow: hidden; text-align: left;
+  border-radius: 1.5px; display: flex; flex-direction: column; transition: transform .15s, filter .15s, opacity .2s; container-type: inline-size; }
+.panel.silver { background: linear-gradient(180deg, color-mix(in srgb, var(--panel-silver) 92%, white), var(--panel-silver)); color: var(--panel-silver-ink); }
+.panel.dark { background: linear-gradient(180deg, color-mix(in srgb, var(--panel-dark) 85%, #444), var(--panel-dark)); color: var(--panel-dark-ink); }
+.panel.white { background: var(--panel-white); color: var(--panel-white-ink); }
+.panel .screw { position: absolute; width: 5px; height: 5px; border-radius: 50%; background: radial-gradient(circle at 35% 35%, #fff9, #0006); }
+.panel .screw.t { top: 3px; left: 4px; } .panel .screw.b { bottom: 3px; right: 4px; }
+.panel .nm { padding: 10px 5px 0; font-weight: 800; font-size: clamp(8px, 13cqi, 13px); line-height: 1.05; font-variation-settings: "wdth" 78;
+  text-transform: uppercase; letter-spacing: .02em; overflow-wrap: anywhere; }
+.panel .mk { margin-top: auto; padding: 0 5px 11px; font-size: clamp(6px, 9cqi, 9.5px); opacity: .7; font-variation-settings: "wdth" 75; line-height: 1.1; }
+.panel.narrow .nm { writing-mode: vertical-rl; transform: rotate(180deg); padding: 10px 0 0; align-self: center; font-size: 9px; max-height: 70%; }
+.panel.narrow .mk { display: none; }
+.panel .face { flex: 1; display: grid; align-content: center; justify-items: center; gap: 8%; padding: 6% 8%; }
+.panel .knobs { display: flex; flex-wrap: wrap; justify-content: center; gap: 6px; width: 100%; }
+.panel .knob { width: clamp(8px, 22cqi, 26px); aspect-ratio: 1; border-radius: 50%; background: radial-gradient(circle at 40% 35%, #6a7078, #1b1e22 70%);
+  box-shadow: 0 1px 2px #0008; position: relative; }
+.panel .knob::after { content: ""; position: absolute; left: 47%; top: 8%; width: 6%; height: 38%; background: #f2f2f2; border-radius: 2px; transform-origin: 50% 110%; transform: rotate(var(--rot, 0deg)); }
+.panel .jacks { display: grid; grid-template-columns: repeat(var(--cols, 2), 1fr); gap: 5px; width: 100%; justify-items: center; }
+.panel .jack { width: clamp(5px, 14cqi, 11px); aspect-ratio: 1; border-radius: 50%; background: radial-gradient(circle, var(--jack) 38%, #9aa1a8 42% 60%, #555b62 64%); }
+.panel .led { position: absolute; top: 8px; right: 5px; width: 5px; height: 5px; border-radius: 50%; background: var(--cat); box-shadow: 0 0 6px var(--cat); }
+.panel.power { cursor: default; background: repeating-linear-gradient(0deg, #25292e 0 2px, #1d2024 2px 4px); color: #8b939c; }
+.panel.power .nm { font-size: 8px; opacity: .7; }
+.panel.unconnected { outline: 1.5px dashed var(--warn); outline-offset: -3px; }
+.panel:not(.power):hover { transform: translateY(-2px); filter: brightness(1.04); z-index: 2; }
+.panel.selected { box-shadow: 0 0 0 2px var(--accent), 0 8px 18px #0007; transform: translateY(-3px); z-index: 3; }
+.cases.filtering .panel:not(.hit) { opacity: .22; filter: saturate(.2); }
+.cases.filtering .panel.hit { box-shadow: 0 0 0 2px var(--cat); }
+.photo { display: block; width: 100%; max-width: 100%; border-radius: 8px; box-shadow: var(--shadow); }
+.row-label { font-size: 11px; color: #aeb5bd; font-variation-settings: "wdth" 85; letter-spacing: .04em; margin: -2px 2px -6px; }
+.desk { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 12px; }
+.desk-card { display: flex; gap: 12px; align-items: center; padding: 12px 14px; background: var(--surface); border: 1px solid var(--line); border-radius: 8px;
+  cursor: pointer; text-align: left; }
+.desk-card:hover { border-color: var(--ink-3); }
+.desk-card.selected { border-color: var(--accent); box-shadow: 0 0 0 2px var(--accent-soft); }
+.desk-card .keys { width: 54px; height: 30px; flex: none; border-radius: 4px; background: repeating-linear-gradient(90deg, #fafafa 0 6px, #999 6px 7px); border: 1px solid var(--line); }
+.desk-card .grid16 { width: 54px; height: 30px; flex: none; border-radius: 4px; background: #1d2024; display: grid; grid-template-columns: repeat(8, 1fr); gap: 2px; padding: 3px; }
+.desk-card .grid16 span { border-radius: 1px; background: #3a3f46; } .desk-card .grid16 span:nth-child(3n) { background: var(--accent); }
+.desk-card b { display: block; font-size: 14px; } .desk-card small { color: var(--ink-2); font-size: 12.5px; }
+.facts { margin: 0; padding: 14px 16px 14px 32px; background: var(--surface); border: 1px solid var(--line); border-radius: 8px; color: var(--ink-2); font-size: 14px; display: grid; gap: 6px; }
+
+.detail { position: sticky; top: calc(env(safe-area-inset-top, 0px) + 76px); background: var(--surface); border: 1px solid var(--line); border-radius: 10px;
+  padding: 18px; max-height: calc(100vh - 100px); overflow: auto; min-width: 0; }
+@media (max-width: 1100px) { .detail { position: static; max-height: none; } }
+.detail h3 { margin: 6px 0 2px; font-family: var(--f-display); font-size: 26px; font-weight: 800; font-variation-settings: "wdth" 112; line-height: 1.05; }
+.detail .meta { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; color: var(--ink-2); font-size: 13px; }
+.detail .short { font-size: 15px; margin: 10px 0 12px; }
+.detail .actions { display: flex; flex-wrap: wrap; gap: 8px; margin: 12px 0 16px; }
+.detail .guide { font-size: 14px; color: var(--ink); border-top: 1px solid var(--line); padding-top: 12px; }
+.detail .guide ul { padding-left: 18px; margin: 0; display: grid; gap: 6px; }
+.detail .walk-links { display: grid; gap: 6px; margin-top: 12px; }
+.detail .walk-links a { font-size: 14px; font-weight: 600; text-decoration: none; padding: 8px 10px; border-radius: 6px; background: var(--surface-2); display: block; }
+.detail .walk-links a:hover { background: var(--accent-soft); }
+.status-pill { font-size: 11px; font-weight: 700; padding: 2px 8px; border-radius: 999px; background: color-mix(in srgb, var(--warn) 18%, transparent); color: var(--warn); }
+.empty-detail { color: var(--ink-2); font-size: 14px; }
+.empty-detail .big { font-family: var(--f-display); font-weight: 800; font-size: 20px; color: var(--ink); font-variation-settings: "wdth" 110; margin-bottom: 6px; }
+
+/* ---------- prose (manual reader, chat answers, guide) ---------- */
+.prose { font-size: 15px; line-height: 1.62; overflow-wrap: anywhere; }
+.prose h1, .prose h2, .prose h3 { font-family: var(--f-display); font-variation-settings: "wdth" 108; line-height: 1.15; text-wrap: balance; }
+.prose h2 { font-size: 19px; margin: 26px 0 8px; padding-top: 14px; border-top: 1px solid var(--line); }
+.prose h3 { font-size: 16px; margin: 18px 0 6px; }
+.prose p { margin: 0 0 10px; max-width: 70ch; }
+.prose ul, .prose ol { padding-left: 20px; margin: 0 0 12px; max-width: 72ch; }
+.prose li { margin: 3px 0; }
+.prose code { font-family: var(--f-mono); font-size: 12.5px; background: var(--surface-2); padding: 1px 5px; border-radius: 4px; }
+.prose table { border-collapse: collapse; font-size: 13.5px; display: block; overflow-x: auto; }
+.prose th, .prose td { border: 1px solid var(--line); padding: 5px 8px; text-align: left; vertical-align: top; }
+.prose a { color: var(--accent); }
+mark { background: var(--mark); color: inherit; border-radius: 2px; padding: 0 1px; }
+
+/* ---------- manuals ---------- */
+.ask { background: var(--surface); border: 1px solid var(--line); border-radius: 12px; padding: 16px; margin-bottom: 22px; box-shadow: var(--shadow); }
+.ask-head { display: flex; align-items: baseline; gap: 12px; justify-content: space-between; flex-wrap: wrap; margin-bottom: 10px; }
+.ask-head h3 { margin: 0; font-size: 18px; font-weight: 800; font-variation-settings: "wdth" 112; }
+.thread { display: flex; flex-direction: column; gap: 12px; max-height: 520px; overflow-y: auto; padding: 2px 2px 8px; }
+.thread:empty { display: none; }
+.msg { max-width: 860px; min-width: 0; }
+.msg.me { align-self: flex-end; background: var(--ink); color: var(--bg); padding: 8px 12px; border-radius: 12px 12px 2px 12px; max-width: 70%; white-space: pre-wrap; }
+.msg.ai { background: var(--surface-2); border: 1px solid var(--line); padding: 12px 14px; border-radius: 2px 12px 12px 12px; }
+.msg.ai .prose { font-size: 14.5px; }
+.msg.ai .prose p:last-child { margin-bottom: 0; }
+.msg .tools { font-family: var(--f-mono); font-size: 11.5px; color: var(--ink-3); margin-top: 8px; }
+.composer { display: flex; gap: 8px; align-items: flex-end; margin-top: 10px; }
+.composer textarea { min-height: 46px; }
+@media (max-width: 560px) { .composer { flex-wrap: wrap; } .composer .btn { flex: 1; justify-content: center; } }
+.suggests { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 10px; }
+.suggests button { font-size: 12.5px; border: 1px dashed var(--line); background: transparent; border-radius: 999px; padding: 4px 10px; cursor: pointer; color: var(--ink-2); }
+.suggests button:hover { border-color: var(--accent); color: var(--ink); }
+.unavailable { font-size: 13.5px; color: var(--ink-2); background: var(--surface-2); border-radius: 8px; padding: 10px 12px; }
+.lib { display: grid; grid-template-columns: 340px minmax(0, 1fr); gap: 22px; align-items: start; }
+@media (max-width: 900px) { .lib { grid-template-columns: minmax(0, 1fr); } }
+.lib-side { position: sticky; top: calc(env(safe-area-inset-top, 0px) + 76px); display: flex; flex-direction: column; gap: 10px; max-height: calc(100vh - 96px); min-width: 0; }
+@media (max-width: 900px) { .lib-side { position: static; max-height: none; } }
+.lib-list { overflow-y: auto; border: 1px solid var(--line); border-radius: 10px; background: var(--surface); min-height: 120px; }
+@media (max-width: 900px) { .lib-list { max-height: 360px; } }
+.lib-item { display: grid; grid-template-columns: 10px 1fr auto; gap: 10px; align-items: center; width: 100%; text-align: left; border: 0; border-bottom: 1px solid var(--line);
+  background: transparent; padding: 9px 12px; cursor: pointer; }
+.lib-item:last-child { border-bottom: 0; }
+.lib-item:hover { background: var(--surface-2); }
+.lib-item.on { background: var(--accent-soft); }
+.lib-item i { width: 8px; height: 8px; border-radius: 50%; }
+.lib-item b { font-size: 14px; font-weight: 700; display: block; line-height: 1.2; }
+.lib-item small { font-size: 12px; color: var(--ink-2); }
+.hit-item { display: block; width: 100%; text-align: left; border: 0; border-bottom: 1px solid var(--line); background: transparent; padding: 10px 12px; cursor: pointer; }
+.hit-item:hover { background: var(--surface-2); }
+.hit-item .h { display: flex; gap: 8px; align-items: center; font-size: 13px; font-weight: 700; }
+.hit-item .h span { color: var(--ink-3); font-weight: 600; }
+.hit-item p { margin: 4px 0 0; font-size: 13px; color: var(--ink-2); line-height: 1.45; }
+.reader { background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 22px clamp(16px, 3vw, 34px) 30px; min-width: 0; }
+.reader-head { display: flex; justify-content: space-between; gap: 16px; flex-wrap: wrap; align-items: start; }
+.reader-head h3 { margin: 4px 0 2px; font-family: var(--f-display); font-size: clamp(24px, 3vw, 32px); font-weight: 800; font-variation-settings: "wdth" 114; line-height: 1.05; }
+.toc { display: flex; flex-wrap: wrap; gap: 6px; margin: 14px 0 4px; }
+.toc a { font-size: 12.5px; text-decoration: none; padding: 3px 9px; border-radius: 999px; background: var(--surface-2); border: 1px solid var(--line); }
+.toc a:hover { border-color: var(--accent); }
+.source-note { font-size: 12.5px; color: var(--ink-3); margin-top: 8px; }
+.pending-note { font-size: 13.5px; background: var(--surface-2); border-radius: 8px; padding: 10px 12px; color: var(--ink-2); }
+
+/* ---------- walkthroughs ---------- */
+.walk-top { display: grid; grid-template-columns: minmax(0, 1fr) 380px; gap: 22px; align-items: start; }
+@media (max-width: 1000px) { .walk-top { grid-template-columns: minmax(0, 1fr); } }
+.walk-tools { display: flex; gap: 10px; margin-bottom: 14px; flex-wrap: wrap; }
+.walk-tools input { flex: 1 1 220px; width: auto; }
+.walk-tools select { flex: 0 1 220px; width: auto; }
+.cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 14px; }
+.wcard { display: flex; flex-direction: column; gap: 10px; text-align: left; padding: 16px; background: var(--surface); border: 1px solid var(--line); border-radius: 10px;
+  cursor: pointer; position: relative; overflow: hidden; min-width: 0; }
+.wcard:hover { border-color: var(--ink-3); transform: translateY(-1px); }
+.wcard .cable { position: absolute; left: 0; top: 0; bottom: 0; width: 4px; background: var(--wc, var(--accent)); }
+.wcard h4 { margin: 0; font-size: 17px; line-height: 1.2; font-weight: 800; font-variation-settings: "wdth" 104; text-wrap: balance; }
+.wcard p { margin: 0; font-size: 13.5px; color: var(--ink-2); }
+.wcard .foot { display: flex; gap: 6px; flex-wrap: wrap; margin-top: auto; }
+.tag { font-size: 11.5px; font-weight: 600; padding: 1px 7px; border-radius: 4px; background: var(--surface-2); color: var(--ink-2); font-variation-settings: "wdth" 88; }
+.tag.draft { background: color-mix(in srgb, var(--cable-purple) 18%, transparent); color: var(--cable-purple); }
+.request { background: var(--surface); border: 1px solid var(--line); border-radius: 12px; padding: 16px; box-shadow: var(--shadow); }
+.request h3 { margin: 0 0 4px; font-size: 18px; font-weight: 800; font-variation-settings: "wdth" 112; }
+.request p { margin: 0 0 10px; font-size: 13.5px; color: var(--ink-2); }
+.request .row2 { display: flex; gap: 8px; margin-top: 8px; align-items: center; flex-wrap: wrap; }
+.progress { font-family: var(--f-mono); font-size: 12px; color: var(--ink-2); margin-top: 10px; display: grid; gap: 3px; }
+.progress div::before { content: "› "; color: var(--accent); }
+.empty-cards { padding: 28px; text-align: center; color: var(--ink-2); border: 1px dashed var(--line); border-radius: 10px; }
+
+.sheet { background: var(--surface); border: 1px solid var(--line); border-radius: 12px; padding: clamp(18px, 3.5vw, 40px); max-width: 920px; margin: 0 auto; min-width: 0; }
+.sheet-bar { display: flex; justify-content: space-between; gap: 10px; flex-wrap: wrap; max-width: 920px; margin: 0 auto 12px; }
+.sheet h2.title { font-family: var(--f-display); font-size: clamp(26px, 4vw, 40px); line-height: 1.04; font-weight: 800; font-variation-settings: "wdth" 116;
+  letter-spacing: -.015em; margin: 6px 0 10px; text-wrap: balance; }
+.sheet .lede { font-size: 17px; color: var(--ink-2); margin: 0 0 18px; max-width: 64ch; }
+.goal { background: var(--accent-soft); border-radius: 10px; padding: 14px 16px; margin-bottom: 20px; }
+.goal .eyebrow { color: var(--accent); }
+.goal p { margin: 4px 0 0; font-size: 15.5px; }
+.sheet-grid { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 18px; margin-bottom: 8px; }
+@media (max-width: 700px) { .sheet-grid { grid-template-columns: minmax(0, 1fr); } }
+.sheet h3.k { font-size: 12px; text-transform: uppercase; letter-spacing: .12em; color: var(--ink-3); margin: 0 0 8px; font-variation-settings: "wdth" 80; }
+.sheet ul.need { margin: 0; padding-left: 18px; font-size: 14.5px; }
+.patch { width: 100%; border-collapse: collapse; font-size: 14px; }
+.patch-wrap { overflow-x: auto; margin-bottom: 8px; }
+.patch td { padding: 8px 8px; border-bottom: 1px solid var(--line); vertical-align: middle; }
+.patch td.c { width: 22px; padding-right: 0; }
+.patch .cb { display: block; width: 14px; height: 14px; border-radius: 50%; background: var(--cc); box-shadow: inset 0 0 0 3px color-mix(in srgb, var(--cc) 60%, black); }
+.patch .arrow { color: var(--ink-3); padding-inline: 4px; }
+.patch .n { color: var(--ink-3); font-size: 12.5px; }
+.part { margin-top: 30px; }
+.part h3.ph { display: flex; gap: 12px; align-items: baseline; font-family: var(--f-display); font-size: 21px; font-weight: 800; font-variation-settings: "wdth" 110; margin: 0 0 6px; text-wrap: balance; }
+.part h3.ph .num { font-family: var(--f-mono); font-size: 13px; color: var(--accent); font-weight: 600; flex: none; }
+.part .intro { color: var(--ink-2); margin: 0 0 10px; max-width: 66ch; }
+.steps { list-style: none; margin: 0; padding: 0; display: grid; gap: 2px; counter-reset: s; }
+.step { display: grid; grid-template-columns: 26px 30px minmax(0, 1fr); gap: 8px; padding: 10px 8px; border-radius: 8px; align-items: start; }
+.step:hover { background: var(--surface-2); }
+.step input { width: 18px; height: 18px; margin: 2px 0 0; accent-color: var(--accent); cursor: pointer; }
+.step .sn { font-family: var(--f-mono); font-size: 12.5px; color: var(--ink-3); padding-top: 2px; }
+.step .do { font-size: 15.5px; }
+.step .why { font-size: 13.5px; color: var(--ink-2); margin-top: 3px; }
+.step.done .do { color: var(--ink-3); text-decoration: line-through; text-decoration-color: var(--line); }
+.note { margin-top: 10px; font-size: 14px; padding: 10px 14px; border-left: 3px solid var(--cable-blue); background: color-mix(in srgb, var(--cable-blue) 9%, transparent); border-radius: 0 8px 8px 0; }
+.trouble { display: grid; gap: 8px; margin: 0; padding: 0; list-style: none; }
+.trouble li { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.4fr); gap: 12px; padding: 10px 12px; background: var(--surface-2); border-radius: 8px; font-size: 14px; }
+@media (max-width: 600px) { .trouble li { grid-template-columns: minmax(0, 1fr); gap: 2px; } }
+.trouble b { font-weight: 700; }
+.sources { font-size: 13px; color: var(--ink-2); padding-left: 18px; }
+.sources a { color: var(--ink-2); }
+.draft-bar { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; padding: 12px 14px; border-radius: 10px; background: color-mix(in srgb, var(--cable-purple) 12%, var(--surface)); border: 1px solid color-mix(in srgb, var(--cable-purple) 35%, transparent); max-width: 920px; margin: 0 auto 12px; font-size: 14px; }
+.draft-bar span { flex: 1 1 240px; }
+.toast { position: fixed; left: 50%; bottom: calc(20px + env(safe-area-inset-bottom, 0px)); transform: translateX(-50%); background: var(--ink); color: var(--bg); padding: 9px 16px; border-radius: 8px; font-size: 14px; z-index: 50; box-shadow: var(--shadow); }
+
+/* ---------- setup-needed + guided tour ---------- */
+.setup-needed { max-width: 640px; margin: 40px auto; background: var(--surface); border: 1px solid var(--line); border-radius: 12px; padding: clamp(20px, 4vw, 36px); }
+.setup-needed h2 { font-family: var(--f-display); font-size: clamp(26px, 4vw, 34px); font-weight: 800; font-variation-settings: "wdth" 115; margin: 6px 0 12px; line-height: 1.05; }
+.setup-needed p { font-size: 15.5px; max-width: 60ch; }
+.tour-shade { position: fixed; inset: 0; z-index: 60; }
+.tour-spot { position: fixed; z-index: 61; border-radius: 10px; box-shadow: 0 0 0 3px var(--accent), 0 0 0 9999px rgba(10, 12, 15, .62); transition: all .25s ease; pointer-events: none; }
+.tour-card { position: fixed; z-index: 62; width: min(360px, calc(100vw - 32px)); background: var(--surface); color: var(--ink); border: 1px solid var(--line); border-radius: 12px;
+  padding: 16px 16px 12px; box-shadow: var(--shadow); transition: top .25s ease, left .25s ease; }
+.tour-card .eyebrow { color: var(--accent); }
+.tour-card h3 { margin: 4px 0 6px; font-family: var(--f-display); font-size: 19px; font-weight: 800; font-variation-settings: "wdth" 110; }
+.tour-card p { margin: 0 0 12px; font-size: 14.5px; color: var(--ink-2); }
+.tour-card .tour-nav { display: flex; gap: 8px; align-items: center; }
+.tour-card .tour-nav .sp { flex: 1; }
+.tour-dots { display: flex; gap: 4px; }
+.tour-dots i { width: 6px; height: 6px; border-radius: 50%; background: var(--line); }
+.tour-dots i.on { background: var(--accent); }
+@media (prefers-reduced-motion: reduce) { * { transition: none !important; animation: none !important; } }
+</style>
+
+<header class="top">
+  <div class="wrap">
+    <div class="brand"><h1 id="rack-name">RackApp</h1><span class="stat" id="stat"></span></div>
+    <button class="btn ghost tour-btn" id="tour-btn" hidden>Walk me through</button>
+    <nav class="tabs" role="tablist" aria-label="Sections">
+      <button class="tab" role="tab" id="tab-rack" aria-selected="true" data-room="rack"><span class="jack-dot"></span>Rack</button>
+      <button class="tab" role="tab" id="tab-manuals" aria-selected="false" data-room="manuals"><span class="jack-dot"></span>Manuals</button>
+      <button class="tab" role="tab" id="tab-walkthroughs" aria-selected="false" data-room="walkthroughs"><span class="jack-dot"></span>Walkthroughs</button>
+    </nav>
+  </div>
+</header>
+
+<main class="wrap">
+  <!-- ================= RACK ================= -->
+  <section class="room" id="room-rack" aria-labelledby="tab-rack">
+    <div class="room-head">
+      <div>
+        <div class="eyebrow" id="rack-eyebrow">Your cases, drawn to HP scale</div>
+        <h2>The system as it sits today</h2>
+        <p>Tap any module for what it does, how it fits your rack, its manual and the walkthroughs that use it. Use the filters to light up everything that can do a job.</p>
+      </div>
+    </div>
+    <div class="filterbar">
+      <span class="eyebrow">Light up</span>
+      <div class="chips" id="cat-chips"></div>
+    </div>
+    <div class="rack-layout">
+      <div class="cases" id="cases"></div>
+      <aside class="detail" id="detail" aria-live="polite"></aside>
+    </div>
+  </section>
+
+  <!-- ================= MANUALS ================= -->
+  <section class="room" id="room-manuals" aria-labelledby="tab-manuals" hidden>
+    <div class="room-head">
+      <div>
+        <div class="eyebrow">Manual notes for every module and controller</div>
+        <h2>Manuals</h2>
+        <p id="man-sub">Search across every manual, read one start to finish, or ask a question and get an answer drawn from the manuals and your own setup.</p>
+      </div>
+    </div>
+    <div class="ask" id="ask">
+      <div class="ask-head">
+        <h3>Ask the manuals</h3>
+        <button class="btn ghost" id="chat-clear" hidden>New conversation</button>
+      </div>
+      <div class="thread" id="thread"></div>
+      <div class="composer">
+        <textarea id="chat-input" rows="2" placeholder="e.g. How do I sync an LFO to my master clock?"></textarea>
+        <button class="btn primary" id="chat-send">Ask</button>
+        <button class="btn" id="chat-stop" hidden>Stop</button>
+      </div>
+      <div class="suggests" id="chat-suggests"></div>
+      <div class="unavailable" id="chat-off" hidden>Asking questions needs Claude, which isn't available in this view. Search and the manual reader below still work.</div>
+    </div>
+    <div class="lib">
+      <div class="lib-side">
+        <input type="search" id="man-search" placeholder="Search every manual: e.g. clock divider, calibration, V/oct" aria-label="Search manuals">
+        <div class="chips" id="man-filter"></div>
+        <div class="lib-list" id="man-list" role="list"></div>
+      </div>
+      <article class="reader" id="reader"></article>
+    </div>
+  </section>
+
+  <!-- ================= WALKTHROUGHS ================= -->
+  <section class="room" id="room-walkthroughs" aria-labelledby="tab-walkthroughs" hidden>
+    <div id="walk-index">
+      <div class="room-head">
+        <div>
+          <div class="eyebrow">Step-by-step patches for this rack</div>
+          <h2>Walkthroughs</h2>
+          <p>Every walkthrough follows the same sheet: the goal, what you need, a patch list, then plain-language steps you can tick off as you go.</p>
+        </div>
+      </div>
+      <div class="walk-top">
+        <div style="min-width:0">
+          <div class="walk-tools">
+            <input type="search" id="walk-search" placeholder="Find a walkthrough" aria-label="Find a walkthrough">
+            <select id="walk-module" aria-label="Filter by module"><option value="">Any module</option></select>
+          </div>
+          <div class="cards" id="cards"></div>
+        </div>
+        <aside class="request" id="request">
+          <h3>Request a new walkthrough</h3>
+          <p>Describe the sound, technique or module you want to learn. Claude drafts a walkthrough for your exact rack in the same format, and you can save it here.</p>
+          <textarea id="req-input" rows="4" placeholder="e.g. A generative ambient patch using my random source and reverb, clocked from my master clock"></textarea>
+          <div class="row2">
+            <button class="btn primary" id="req-go">Draft walkthrough</button>
+            <button class="btn" id="req-stop" hidden>Stop</button>
+          </div>
+          <div class="progress" id="req-progress"></div>
+          <div class="unavailable" id="req-off" hidden>Drafting needs Claude, which isn't available in this view. You can still ask for a walkthrough in the project chat.</div>
+        </aside>
+      </div>
+    </div>
+    <div id="walk-view" hidden></div>
+  </section>
+</main>
+<div class="toast" id="toast" hidden></div>
+
+<script>
+(() => {
+"use strict";
+const useCap = n => (window.claude && window.claude.use) ? window.claude.use(n) : Promise.resolve(null);
+const $ = (s, el = document) => el.querySelector(s);
+const $$ = (s, el = document) => [...el.querySelectorAll(s)];
+const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+const store = { get(k, d) { try { const v = localStorage.getItem(k); return v == null ? d : JSON.parse(v); } catch { return d; } },
+                set(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch {} } };
+const md = s => { try { return DOMPurify.sanitize(marked.parse(String(s || ""), { mangle: false, headerIds: false })); } catch { return "<p>" + esc(s) + "</p>"; } };
+const inline = s => esc(s).replace(/\*\*(.+?)\*\*/g, "<b>$1</b>").replace(/\*(.+?)\*/g, "<i>$1</i>");
+function toast(t) { const el = $("#toast"); el.textContent = t; el.hidden = false; clearTimeout(toast.t); toast.t = setTimeout(() => el.hidden = true, 2600); }
+
+const CAT = { clock: "Clocks", sequencer: "Sequencers", modulation: "Modulation", envelope: "Envelopes", vca: "VCAs & gates", utility: "Utilities",
+  oscillator: "Oscillators", voice: "Voices", filter: "Filters", effect: "Effects", sampler: "Samplers", io: "Audio & I/O", mixer: "Mixing",
+  controller: "Controllers", measurement: "Scope", random: "Random" };
+const catColor = c => `var(--c-${c})`;
+
+let DATA = null, CHUNKS = [], WALKS = [], DBWALKS = [], selected = null;
+
+/* ================= routing ================= */
+function showRoom(room, push = true) {
+  $$(".tab").forEach(t => t.setAttribute("aria-selected", String(t.dataset.room === room)));
+  $$(".room").forEach(r => r.hidden = r.id !== "room-" + room);
+  if (push) { try { history.replaceState(null, "", "#" + room); } catch {} }
+  store.set("room", room);
+  window.scrollTo({ top: 0 });
+}
+$$(".tab").forEach(t => t.addEventListener("click", () => { showRoom(t.dataset.room); if (t.dataset.room === "walkthroughs") closeWalk(); }));
+
+/* ================= rack ================= */
+function panelHTML(slug, m) {
+  const narrow = m.hp <= 4;
+  const cls = ["panel", m.panel || "silver", narrow ? "narrow" : "", m.kind === "power" ? "power" : "", m.status ? "unconnected" : ""].join(" ");
+  let seed = [...slug].reduce((a, c) => (a * 31 + c.charCodeAt(0)) >>> 0, 7);
+  const rnd = () => (seed = (seed * 1103515245 + 12345) >>> 0) / 4294967296;
+  let face = "";
+  if (m.kind !== "power") {
+    const nk = narrow ? (m.hp >= 4 ? 2 : 0) : Math.min(8, Math.max(1, Math.round(m.hp / 4)));
+    const cols = Math.max(1, Math.min(6, Math.floor(m.hp / 2.6)));
+    const nj = cols * (m.hp <= 2 ? 6 : 3);
+    face = `<div class="face"><div class="knobs">${Array.from({ length: nk }, () => `<span class="knob" style="--rot:${Math.round(rnd() * 280 - 140)}deg"></span>`).join("")}</div>
+      <div class="jacks" style="--cols:${cols}">${Array.from({ length: nj }, () => `<span class="jack"></span>`).join("")}</div></div>`;
+  }
+  const label = m.name;
+  return `<button class="${cls}" data-slug="${slug}" style="flex:${m.hp} 1 0;--cat:${catColor(m.category)}" ${m.kind === "power" ? 'tabindex="-1" aria-hidden="true"' : `aria-label="${esc(m.name)}, ${esc(m.maker)}, ${m.hp} HP"`}>
+    <span class="screw t"></span><span class="screw b"></span>${m.kind !== "power" ? '<span class="led"></span>' : ""}
+    <span class="nm">${esc(label)}</span>${face}<span class="mk">${esc(m.maker)}</span></button>`;
+}
+function renderRack() {
+  const M = DATA.modules;
+  const view = store.get("caseView", {});
+  $("#cases").innerHTML = DATA.cases.map(c => {
+    const hp = c.rows.reduce((a, r) => a + r.modules.reduce((b, s) => b + (M[s].kind === "power" ? 0 : M[s].hp), 0), 0);
+    const n = c.rows.reduce((a, r) => a + r.modules.filter(s => M[s].kind !== "power").length, 0);
+    const photo = !!c.photo && view[c.id] === "photo";
+    const caseHp = Math.max(42, ...c.rows.map(r => r.modules.reduce((b, s) => b + M[s].hp, 0)));
+    return `<div class="case-block">
+      <div class="case-title"><h3>${esc(c.name)}</h3><span class="mono">${esc(c.type)} · ${n} modules · ${hp} HP</span><span class="muted" style="font-size:13px">${esc(c.note)}</span>
+        ${c.photo ? `<div class="seg" role="group" aria-label="${esc(c.name)} view"><button data-case="${c.id}" data-v="draw" aria-pressed="${!photo}">Drawing</button><button data-case="${c.id}" data-v="photo" aria-pressed="${photo}">Photo</button></div>` : ""}</div>
+      ${photo ? `<img class="photo" src="${esc(c.photo)}" alt="Photo of ${esc(c.name)}" loading="lazy">` :
+      `<div class="scroller"><div class="case" style="--hp:${caseHp}"><div class="cheek"></div><div class="case-body">
+        ${c.rows.map(r => { const fill = caseHp - r.modules.reduce((b, s) => b + M[s].hp, 0); return `<div class="row-label">${esc(r.label)}</div><div class="row">${r.modules.map(s => panelHTML(s, M[s])).join("")}${fill > 0 ? `<span style="flex:${fill} 1 0"></span>` : ""}</div>`; }).join("")}
+      </div><div class="cheek"></div></div></div>`}
+    </div>`;
+  }).join("") + ((DATA.desk || []).length ? `<div class="case-block"><div class="case-title"><h3>On the desk</h3><span class="mono">controllers</span></div>
+    <div class="desk">${(DATA.desk || []).map(s => { const m = M[s]; return `<button class="desk-card" data-slug="${s}">
+      ${/key|keyboard/i.test(m.name + " " + m.short) ? '<span class="keys"></span>' : `<span class="grid16">${"<span></span>".repeat(16)}</span>`}
+      <span><b>${esc(m.name)}</b><small>${esc(m.short)}</small></span></button>`; }).join("")}</div></div>` : "") + ((DATA.systemFacts || []).length ? `
+    <div class="case-block"><div class="case-title"><h3>Things to remember about this system</h3></div>
+    <ul class="facts">${DATA.systemFacts.map(f => `<li>${inline(f)}</li>`).join("")}</ul></div>` : "");
+  $$("#cases [data-slug]").forEach(b => { if (DATA.modules[b.dataset.slug].kind !== "power") b.addEventListener("click", () => selectModule(b.dataset.slug, true)); });
+  $$("#cases .seg button").forEach(b => b.addEventListener("click", () => { const v = store.get("caseView", {}); v[b.dataset.case] = b.dataset.v; store.set("caseView", v); renderRack(); applyFilter(); markSelected(); }));
+  markSelected();
+}
+let activeCat = null;
+function renderCatChips() {
+  const cats = [...new Set(Object.values(DATA.modules).filter(m => m.kind !== "power").map(m => m.category))];
+  $("#cat-chips").innerHTML = cats.map(c => `<button class="chip" data-cat="${c}" aria-pressed="false"><i style="background:${catColor(c)}"></i>${esc(CAT[c] || c)}</button>`).join("");
+  $$("#cat-chips .chip").forEach(ch => ch.addEventListener("click", () => { activeCat = activeCat === ch.dataset.cat ? null : ch.dataset.cat; applyFilter(); }));
+}
+function applyFilter() {
+  $$("#cat-chips .chip").forEach(ch => ch.setAttribute("aria-pressed", String(ch.dataset.cat === activeCat)));
+  $("#cases").classList.toggle("filtering", !!activeCat);
+  $$("#cases .panel, #cases .desk-card").forEach(p => p.classList.toggle("hit", !!activeCat && DATA.modules[p.dataset.slug]?.category === activeCat));
+}
+function markSelected() { $$("#cases [data-slug]").forEach(p => p.classList.toggle("selected", p.dataset.slug === selected)); }
+function caseOf(slug) { const c = DATA.cases.find(c => c.rows.some(r => r.modules.includes(slug))); return c ? c.name : "Desk"; }
+function walksFor(slug) { return allWalks().filter(w => (w.modules || []).includes(slug)); }
+function selectModule(slug, scroll) {
+  selected = slug; markSelected(); store.set("sel", slug);
+  const m = DATA.modules[slug];
+  const ws = walksFor(slug);
+  $("#detail").innerHTML = `
+    <div class="meta"><span class="chip" style="cursor:default"><i style="background:${catColor(m.category)}"></i>${esc(CAT[m.category] || m.category)}</span>
+      <span class="mono">${esc(caseOf(slug))}${m.hp ? " · " + m.hp + " HP" : ""}</span>${m.status ? `<span class="status-pill">${esc(m.status)}</span>` : ""}</div>
+    <h3>${esc(m.name)}</h3><div class="muted">${esc(m.maker)}</div>
+    <p class="short">${esc(m.short)}</p>
+    <div class="actions">
+      <button class="btn primary" data-act="manual">Read manual notes</button>
+      <button class="btn" data-act="ask">Ask about it</button>
+      ${m.manual_url ? `<a class="btn ghost" href="${esc(m.manual_url)}" target="_blank" rel="noopener">Official docs ↗</a>` : ""}
+    </div>
+    ${m.guide ? `<div class="guide prose"><div class="eyebrow" style="margin-bottom:8px">How it fits your rack</div>${md(m.guide)}</div>` : ""}
+    <div class="eyebrow" style="margin-top:14px">Walkthroughs using it</div>
+    <div class="walk-links">${ws.length ? ws.map(w => `<a href="#walk-${esc(w.id)}" data-walk="${esc(w.id)}">${esc(w.title)}</a>`).join("") : `<span class="muted" style="font-size:13.5px">None yet. Request one from the Walkthroughs tab.</span>`}</div>`;
+  $("#detail [data-act=manual]").onclick = () => { showRoom("manuals"); openManual(slug); };
+  $("#detail [data-act=ask]").onclick = () => { showRoom("manuals"); const t = $("#chat-input"); t.value = `About my ${m.name}: `; t.focus(); };
+  $$("#detail [data-walk]").forEach(a => a.onclick = e => { e.preventDefault(); showRoom("walkthroughs", false); openWalk(a.dataset.walk); });
+  if (scroll && matchMedia("(max-width: 1100px)").matches) $("#detail").scrollIntoView({ behavior: "smooth", block: "start" });
+}
+function emptyDetail() {
+  const mods = manualModules(); const start = (mods.find(([, m]) => m.category === "clock") || mods[0] || [])[0];
+  $("#detail").innerHTML = `<div class="empty-detail"><div class="big">Pick a module</div>Tap any panel in the drawing to see what it does and how it fits your rack.${start ? ` Start with <a href="#" data-s="${esc(start)}">${esc(DATA.modules[start].name)}</a>.` : ""}</div>`;
+  const a = $("#detail [data-s]"); if (a) a.onclick = e => { e.preventDefault(); selectModule(start); };
+}
+
+/* ================= search ================= */
+const STOP = new Set("the a an and or of to in on for is it its with as at by be this that from are you your can will into when then use used using".split(" "));
+const tok = s => (String(s).toLowerCase().normalize("NFKD").replace(/[̀-ͯ]/g, "").match(/[a-z0-9]+(?:[/.][a-z0-9]+)?/g) || []).filter(w => !STOP.has(w));
+let IDX = null;
+function buildIndex() {
+  const df = new Map(); let total = 0;
+  const docs = CHUNKS.map(c => { const m = DATA.modules[c.m]; const toks = tok((m ? m.name + " " + m.maker + " " : "") + c.s + " " + c.t); total += toks.length;
+    const tf = new Map(); toks.forEach(t => tf.set(t, (tf.get(t) || 0) + 1)); tf.forEach((_, t) => df.set(t, (df.get(t) || 0) + 1)); return { tf, len: toks.length }; });
+  IDX = { docs, df, avg: total / Math.max(1, docs.length), N: docs.length };
+}
+function search(q, { module = null, k = 8 } = {}) {
+  if (!IDX) return [];
+  const qt = [...new Set(tok(q))]; if (!qt.length) return [];
+  const ql = q.toLowerCase();
+  const named = Object.entries(DATA.modules).filter(([s, m]) => m.kind !== "power" && ql.includes(m.name.toLowerCase().replace(/ (mk2|mkii|v2|ii\+)$/i, ""))).map(([s]) => s);
+  const res = [];
+  IDX.docs.forEach((d, i) => {
+    const c = CHUNKS[i]; if (module && c.m !== module) return;
+    let sc = 0;
+    for (const t of qt) { const f = d.tf.get(t); if (!f) continue; const idf = Math.log(1 + (IDX.N - IDX.df.get(t) + .5) / (IDX.df.get(t) + .5));
+      sc += idf * (f * 2.2) / (f + 1.2 * (.25 + .75 * d.len / IDX.avg)); }
+    if (sc > 0) { if (named.includes(c.m)) sc *= 1.8; res.push({ i, sc }); }
+  });
+  return res.sort((a, b) => b.sc - a.sc).slice(0, k).map(r => ({ ...CHUNKS[r.i], score: r.sc }));
+}
+function snippet(text, q) {
+  const qt = tok(q); const plain = text.replace(/[*#`]/g, "");
+  let pos = -1; for (const t of qt) { const p = plain.toLowerCase().indexOf(t); if (p >= 0 && (pos < 0 || p < pos)) pos = p; }
+  const start = Math.max(0, pos - 70); let s = (start ? "…" : "") + plain.slice(start, start + 220) + (plain.length > start + 220 ? "…" : "");
+  s = esc(s); qt.forEach(t => { s = s.replace(new RegExp(`\\b(${t.replace(/[.*+?^${}()|[\]\\/]/g, "\\$&")})`, "gi"), "<mark>$1</mark>"); });
+  return s;
+}
+
+/* ================= manuals ================= */
+let manFilter = "all", openSlug = null;
+function manualModules() { return Object.entries(DATA.modules).filter(([, m]) => m.kind !== "power"); }
+function renderManFilter() {
+  const opts = [["all", "All"], ...(DATA.cases.length > 1 ? DATA.cases.map(c => [c.id, c.name]) : []), ...((DATA.desk || []).length ? [["desk", "Desk"]] : [])];
+  $("#man-filter").innerHTML = opts.map(([v, l]) => `<button class="chip" data-v="${v}" aria-pressed="${manFilter === v}">${esc(l)}</button>`).join("");
+  $$("#man-filter .chip").forEach(b => b.onclick = () => { manFilter = b.dataset.v; renderManFilter(); renderManList(); });
+}
+function inFilter(slug) {
+  if (manFilter === "all") return true;
+  if (manFilter === "desk") return (DATA.desk || []).includes(slug);
+  const c = DATA.cases.find(c => c.id === manFilter); return c.rows.some(r => r.modules.includes(slug));
+}
+function renderManList() {
+  const q = $("#man-search").value.trim();
+  const list = $("#man-list");
+  if (q) {
+    const hits = search(q, { k: 30 }).filter(h => h.m === "_system" || inFilter(h.m));
+    list.innerHTML = hits.length ? hits.map(h => { const m = DATA.modules[h.m]; return `<button class="hit-item" data-m="${h.m}" data-s="${esc(h.s)}">
+      <div class="h"><i style="width:8px;height:8px;border-radius:50%;background:${m ? catColor(m.category) : "var(--ink-3)"}"></i>${esc(m ? m.name : "Whole system")}<span>${esc(h.s)}</span></div>
+      <p>${snippet(h.t, q)}</p></button>`; }).join("") : `<div style="padding:14px" class="muted">Nothing matches “${esc(q)}”. Try fewer or different words, or ask the question above.</div>`;
+    $$("#man-list .hit-item").forEach(b => b.onclick = () => { if (b.dataset.m === "_system") { showRoom("rack"); return; } openManual(b.dataset.m, b.dataset.s, q); });
+    return;
+  }
+  list.innerHTML = manualModules().filter(([s]) => inFilter(s)).sort((a, b) => a[1].name.localeCompare(b[1].name)).map(([s, m]) => `<button class="lib-item ${s === openSlug ? "on" : ""}" data-m="${s}">
+    <i style="background:${catColor(m.category)}"></i><span><b>${esc(m.name)}</b><small>${esc(m.maker)}</small></span>
+    <span class="mono" style="color:var(--ink-3)">${m.hasManual ? (m.manualWords ? Math.max(1, Math.round(m.manualWords / 230)) + " min" : "") : "guide"}</span></button>`).join("");
+  $$("#man-list .lib-item").forEach(b => b.onclick = () => openManual(b.dataset.m));
+}
+function manualText(slug) {
+  return CHUNKS.filter(c => c.m === slug && !c.s.startsWith("Field guide")).reduce((acc, c) => {
+    const last = acc[acc.length - 1]; if (last && last.s === c.s) last.t += "\n" + c.t; else acc.push({ s: c.s, t: c.t }); return acc; }, []);
+}
+const slugify = s => "sec-" + String(s).toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
+function openManual(slug, section, q) {
+  openSlug = slug; const m = DATA.modules[slug]; store.set("man", slug);
+  renderManList();
+  const secs = manualText(slug);
+  let body = secs.map(s => `<h2 id="${slugify(s.s)}">${esc(s.s)}</h2>${md(s.t)}`).join("");
+  if (q) { const qt = tok(q); qt.forEach(t => { body = body.replace(new RegExp(`(>[^<]*?)\\b(${t.replace(/[.*+?^${}()|[\]\\/]/g, "\\$&")})`, "gi"), "$1<mark>$2</mark>"); }); }
+  $("#reader").innerHTML = `<div class="reader-head"><div><div class="eyebrow">${esc(m.maker)} · ${esc(caseOf(slug))}${m.hp ? " · " + m.hp + " HP" : ""}</div><h3>${esc(m.name)}</h3><div class="muted">${esc(m.short)}</div></div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap">${m.manual_url ? `<a class="btn" href="${esc(m.manual_url)}" target="_blank" rel="noopener">Official docs ↗</a>` : ""}<button class="btn" id="rd-rack">Show in rack</button><button class="btn" id="rd-ask">Ask about it</button></div></div>
+    ${secs.length ? `<nav class="toc">${secs.map(s => `<a href="#${slugify(s.s)}" data-to="${slugify(s.s)}">${esc(s.s)}</a>`).join("")}</nav>
+      ${m.read_from ? `<div class="source-note">Notes written from: ${esc(m.read_from)}. Paraphrased; check the official manual for exact wording.</div>` : ""}` :
+      `<div class="pending-note" style="margin-top:14px">The full manual notes for this module aren't in the library yet. Here is what the field guide says about it.</div>`}
+    <div class="prose">${body}${m.guide ? `<h2 id="sec-field-guide">How it fits your rack</h2>${md(m.guide)}` : ""}</div>`;
+  $$("#reader .toc a").forEach(a => a.onclick = e => { e.preventDefault(); document.getElementById(a.dataset.to)?.scrollIntoView({ behavior: "smooth", block: "start" }); });
+  $("#rd-rack").onclick = () => { showRoom("rack"); selectModule(slug); };
+  $("#rd-ask").onclick = () => { const t = $("#chat-input"); t.value = `About my ${m.name}: `; window.scrollTo({ top: 0, behavior: "smooth" }); t.focus(); };
+  const target = section ? document.getElementById(slugify(section)) : null;
+  if (target) setTimeout(() => target.scrollIntoView({ behavior: "smooth", block: "start" }), 30);
+  else if (matchMedia("(max-width: 900px)").matches) $("#reader").scrollIntoView({ behavior: "smooth", block: "start" });
+}
+$("#man-search").addEventListener("input", () => { clearTimeout(renderManList.t); renderManList.t = setTimeout(renderManList, 120); });
+
+/* ================= Claude helpers ================= */
+let sample = null;
+function catalogText() {
+  return manualModules().map(([s, m]) => `- ${s}: ${m.name} (${m.maker}) · ${caseOf(s)} · ${m.category}${m.status ? " · " + m.status.toUpperCase() : ""} — ${m.short}`).join("\n");
+}
+function contextFor(q, k = 8) {
+  return search(q, { k }).map(h => `### ${h.m === "_system" ? "Whole system" : DATA.modules[h.m].name} › ${h.s}\n${h.t.slice(0, 1600)}`).join("\n\n");
+}
+const TOOLS = progress => [
+  { name: "search_manuals", description: "Full-text search over the owner's module manual notes and field guide. Returns up to 6 matching sections {module, section, text}. Pass `module` (a slug from the catalog) to search one module only.",
+    inputSchema: { type: "object", properties: { query: { type: "string" }, module: { type: "string" } }, required: ["query"] },
+    execute: ({ query, module }) => { progress?.(`Searching manuals for “${String(query)}”${module ? " in " + (DATA.modules[module]?.name || module) : ""}`);
+      return search(String(query || ""), { module: module ? String(module) : null, k: 6 }).map(h => ({ module: h.m, section: h.s, text: h.t.slice(0, 1800) })); } },
+  { name: "read_manual", description: "Read one module's manual notes. With no `section`, returns the list of section titles plus the field-guide notes. With `section`, returns that section's text.",
+    inputSchema: { type: "object", properties: { module: { type: "string" }, section: { type: "string" } }, required: ["module"] },
+    execute: ({ module, section }) => { const s = String(module || ""); const m = DATA.modules[s]; if (!m) throw new Error("Unknown module slug. Use a slug from the catalog.");
+      progress?.(`Reading ${m.name}${section ? " › " + section : ""}`);
+      const secs = manualText(s);
+      if (!section) return { module: s, name: m.name, sections: secs.map(x => x.s), fieldGuide: m.guide.slice(0, 4000), hasFullManual: !!secs.length };
+      const hit = secs.find(x => x.s.toLowerCase().includes(String(section).toLowerCase())); if (!hit) throw new Error("No such section. Sections: " + secs.map(x => x.s).join(", "));
+      return { module: s, section: hit.s, text: hit.t.slice(0, 9000) }; } },
+];
+let toolsOK = false;
+const errCopy = c => ({ not_granted: "Claude wasn't allowed to answer in this view.", rate_limited: "Too many questions at once. Wait a moment and try again.",
+  prompt_too_large: "That was too much to send at once. Try a shorter question.", invalid_json: "The draft came back in a broken format. Try again, or reword the request." }[c] || "Something went wrong reaching Claude. Try again.");
+
+/* ================= chat ================= */
+let turns = store.get("chat", []);
+let chatCtl = null;
+const RULES = () => `You are the friendly, expert Eurorack teacher for the owner's modular synth. Answer questions about the owner's own modules using their manual notes and field guide.
+How to answer:
+- Plain, down-to-earth language. When the answer is a procedure or patch, give numbered steps, naming exact jacks and knobs on the owner's modules (e.g. "Clock Out 1 → Sequencer CLK").
+- Prefer modules the owner actually owns (catalog below). Mention case placement when a patch crosses cases.
+- Base facts on the manual excerpts and tools. If the notes don't cover something, say so and give your best general guidance, marked as general.
+- End with a short "From the manuals:" line naming the module › section you relied on.
+- Use Markdown (short headings, lists, **bold** for jack/knob names). Keep it focused.
+
+The owner's modules (slug: name · location · type — summary):
+${catalogText()}
+
+System facts:
+${DATA.systemFacts.map(f => "- " + f).join("\n")}`;
+function renderThread() {
+  const th = $("#thread");
+  th.innerHTML = turns.map(t => t.role === "user" ? `<div class="msg me">${esc(t.content)}</div>` : `<div class="msg ai"><div class="prose">${md(t.content)}</div></div>`).join("");
+  $("#chat-clear").hidden = !turns.length;
+  th.scrollTop = th.scrollHeight;
+}
+async function sendChat(text) {
+  text = text.trim(); if (!text || !sample) return;
+  const ctx = contextFor(text, 7);
+  turns.push({ role: "user", content: text }); renderThread();
+  const th = $("#thread"); const bubble = document.createElement("div"); bubble.className = "msg ai";
+  bubble.innerHTML = `<div class="prose"><p class="muted">Looking through your manuals…</p></div><div class="tools"></div>`; th.appendChild(bubble); th.scrollTop = th.scrollHeight;
+  const prog = msg => { bubble.querySelector(".tools").textContent = msg; };
+  $("#chat-input").value = ""; $("#chat-send").disabled = true; $("#chat-stop").hidden = false;
+  chatCtl = new AbortController();
+  const history = turns.slice(-10, -1);
+  const input = [{ role: "user", content: RULES() }, ...history.map(t => ({ role: t.role, content: t.content })),
+    { role: "user", content: `Question: ${text}\n\nManual excerpts that matched this question (search more with the tools if needed):\n${ctx || "(no direct matches)"}` }];
+  if (input[1] && input[1].role === "assistant") input.splice(1, 0, { role: "user", content: "(earlier conversation)" });
+  try {
+    const { text: ans } = await sample(input, { signal: chatCtl.signal, cache: false, tools: toolsOK ? TOOLS(prog) : undefined,
+      onText: ({ text }) => { bubble.querySelector(".prose").innerHTML = md(text); th.scrollTop = th.scrollHeight; } });
+    turns.push({ role: "assistant", content: ans });
+  } catch (e) {
+    if (e.text) turns.push({ role: "assistant", content: e.text });
+    else if (e.code !== "cancelled") turns.push({ role: "assistant", content: "_" + errCopy(e.code) + "_" });
+    else turns.pop();
+    if (e.code === "not_granted") $("#chat-off").hidden = false;
+  } finally {
+    store.set("chat", turns.slice(-30)); renderThread();
+    $("#chat-send").disabled = false; $("#chat-stop").hidden = true; chatCtl = null;
+  }
+}
+$("#chat-send").onclick = () => sendChat($("#chat-input").value);
+$("#chat-input").addEventListener("keydown", e => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); sendChat(e.target.value); } });
+$("#chat-stop").onclick = () => chatCtl?.abort();
+$("#chat-clear").onclick = () => { turns = []; store.set("chat", turns); renderThread(); };
+function renderSuggests() {
+  const byCat = c => manualModules().find(([, m]) => m.category === c)?.[1]?.name;
+  const filters = manualModules().filter(([, m]) => m.category === "filter").map(([, m]) => m.name);
+  const SUGGEST = [
+    byCat("clock") && `How do I sync everything to my ${byCat("clock")}?`,
+    filters.length > 1 ? `What's the difference between ${filters[0]} and ${filters[1]}?` : "Which of my modules can make a self-running patch?",
+    byCat("sequencer") && `How do I save a pattern on my ${byCat("sequencer")}?`,
+    "What's a good first patch for my rack?",
+  ].filter(Boolean).slice(0, 4);
+  $("#chat-suggests").innerHTML = SUGGEST.map(s => `<button>${esc(s)}</button>`).join("");
+  $$("#chat-suggests button").forEach(b => b.onclick = () => sendChat(b.textContent));
+}
+
+/* ================= walkthroughs ================= */
+const CABLES = ["var(--accent)", "var(--cable-purple)", "var(--cable-red)", "var(--cable-green)", "var(--cable-blue)", "var(--c-sequencer)"];
+const allWalks = () => [...DBWALKS, ...WALKS.filter(w => !DBWALKS.some(d => d.id === w.id))];
+const fmtDate = d => { try { return new Date(d + (String(d).length === 10 ? "T12:00:00" : "")).toLocaleDateString(undefined, { day: "numeric", month: "short", year: "numeric" }); } catch { return d; } };
+function renderWalkSelect() {
+  const used = new Set(allWalks().flatMap(w => w.modules || []));
+  const cur = $("#walk-module").value;
+  $("#walk-module").innerHTML = `<option value="">Any module</option>` + [...used].filter(s => DATA.modules[s]).sort((a, b) => DATA.modules[a].name.localeCompare(DATA.modules[b].name))
+    .map(s => `<option value="${s}">${esc(DATA.modules[s].name)}</option>`).join("");
+  $("#walk-module").value = cur;
+}
+function renderCards() {
+  const q = $("#walk-search").value.trim().toLowerCase(); const mod = $("#walk-module").value;
+  const ws = allWalks().filter(w => (!mod || (w.modules || []).includes(mod)) &&
+    (!q || [w.title, w.summary, w.category, ...(w.modules || []).map(s => DATA.modules[s]?.name || "")].join(" ").toLowerCase().includes(q)));
+  $("#cards").innerHTML = ws.length ? ws.map((w, i) => `<button class="wcard" data-id="${esc(w.id)}" style="--wc:${CABLES[i % CABLES.length]}"><span class="cable"></span>
+    <div class="eyebrow">${esc(w.category || "Walkthrough")} · ${esc(w.level || "")}</div><h4>${esc(w.title)}</h4><p>${esc(w.summary)}</p>
+    <div class="foot">${w._draft ? '<span class="tag draft">Drafted on the site</span>' : ""}${(w.modules || []).slice(0, 5).map(s => `<span class="tag">${esc(DATA.modules[s]?.name || s)}</span>`).join("")}${(w.modules || []).length > 5 ? `<span class="tag">+${w.modules.length - 5}</span>` : ""}</div>
+    <div class="mono" style="color:var(--ink-3)">${esc(fmtDate(w.created))} · ${countSteps(w)} steps</div></button>`).join("")
+    : `<div class="empty-cards">${allWalks().length ? "No walkthroughs match. Clear the search, or request a new one." : "No walkthroughs yet. Describe what you want to learn in “Request a new walkthrough” and it will be written for your rack."}</div>`;
+  $$("#cards .wcard").forEach(c => c.onclick = () => openWalk(c.dataset.id));
+}
+const countSteps = w => (w.sections || []).reduce((a, s) => a + (s.steps || []).length, 0);
+$("#walk-search").addEventListener("input", renderCards);
+$("#walk-module").addEventListener("change", renderCards);
+
+function sheetHTML(w) {
+  const done = store.get("done:" + w.id, {});
+  let n = 0;
+  const mods = (w.modules || []).filter(s => DATA.modules[s]);
+  return `<div class="eyebrow">${esc(w.category || "Walkthrough")} · ${esc(w.level || "")} · ${esc(fmtDate(w.created))}</div>
+  <h2 class="title">${esc(w.title)}</h2><p class="lede">${inline(w.summary)}</p>
+  ${w.goal ? `<div class="goal"><div class="eyebrow">What you'll end up with</div><p>${inline(w.goal)}</p></div>` : ""}
+  <div class="sheet-grid">
+    <div><h3 class="k">Modules used</h3><div class="chips">${mods.map(s => `<button class="chip" data-mod="${s}"><i style="background:${catColor(DATA.modules[s].category)}"></i>${esc(DATA.modules[s].name)}</button>`).join("")}</div></div>
+    ${(w.youNeed || []).length ? `<div><h3 class="k">You'll need</h3><ul class="need">${w.youNeed.map(x => `<li>${inline(x)}</li>`).join("")}</ul></div>` : ""}
+  </div>
+  ${(w.patch || []).length ? `<div class="part"><h3 class="k">Patch list</h3><div class="patch-wrap"><table class="patch"><tbody>${w.patch.map((p, i) => `<tr><td class="c"><span class="cb" style="--cc:${CABLES[i % CABLES.length]}"></span></td>
+    <td><b>${inline(p.from)}</b></td><td class="arrow">→</td><td><b>${inline(p.to)}</b></td><td class="n">${inline(p.note || "")}</td></tr>`).join("")}</tbody></table></div></div>` : ""}
+  ${(w.sections || []).map((s, si) => `<section class="part"><h3 class="ph"><span class="num">${String(si + 1).padStart(2, "0")}</span>${esc(s.title)}</h3>
+    ${s.intro ? `<p class="intro">${inline(s.intro)}</p>` : ""}
+    <ol class="steps">${(s.steps || []).map(st => { n++; const key = si + "." + n; return `<li class="step ${done[key] ? "done" : ""}"><input type="checkbox" id="st-${esc(w.id)}-${si}-${n}" data-k="${key}" ${done[key] ? "checked" : ""} aria-label="Mark step ${n} done">
+      <span class="sn">${n}</span><div><div class="do">${inline(st.do)}</div>${st.why ? `<div class="why">${inline(st.why)}</div>` : ""}</div></li>`; }).join("")}</ol>
+    ${s.note ? `<div class="note">${inline(s.note)}</div>` : ""}</section>`).join("")}
+  ${(w.troubleshooting || []).length ? `<section class="part"><h3 class="k">If something isn't working</h3><ul class="trouble">${w.troubleshooting.map(t => `<li><b>${inline(t.problem)}</b><span>${inline(t.fix)}</span></li>`).join("")}</ul></section>` : ""}
+  ${(w.sources || []).length ? `<section class="part"><h3 class="k">Sources</h3><ul class="sources">${w.sources.map(s => `<li>${s.url ? `<a href="${esc(s.url)}" target="_blank" rel="noopener">${esc(s.label)}</a>` : esc(s.label)}</li>`).join("")}</ul></section>` : ""}`;
+}
+function bindSheet(w, root) {
+  $$('input[type="checkbox"]', root).forEach(cb => cb.onchange = () => { const d = store.get("done:" + w.id, {}); d[cb.dataset.k] = cb.checked; store.set("done:" + w.id, d); cb.closest(".step").classList.toggle("done", cb.checked); });
+  $$("[data-mod]", root).forEach(b => b.onclick = () => { showRoom("rack"); selectModule(b.dataset.mod); });
+}
+let draft = null;
+function openWalk(id, w = null) {
+  w = w || allWalks().find(x => x.id === id); if (!w) return;
+  $("#walk-index").hidden = true; const v = $("#walk-view"); v.hidden = false;
+  const isDraft = w === draft;
+  v.innerHTML = `${isDraft ? `<div class="draft-bar"><span><b>New draft.</b> Read it through, then save it to your library or try again with a different request.</span>
+      <button class="btn primary" id="dr-save">Save to library</button><button class="btn" id="dr-discard">Discard</button></div>` : ""}
+    <div class="sheet-bar"><button class="btn ghost" id="wv-back">← All walkthroughs</button>
+      <span style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn" id="wv-ask">Ask a follow-up</button>${w._draft && !isDraft ? `<button class="btn ghost" id="wv-del">Remove draft</button>` : ""}<button class="btn ghost" id="wv-reset">Clear ticks</button></span></div>
+    <article class="sheet">${sheetHTML(w)}</article>`;
+  bindSheet(w, v);
+  $("#wv-back").onclick = closeWalk;
+  $("#wv-reset").onclick = () => { store.set("done:" + w.id, {}); openWalk(id, w); };
+  $("#wv-ask").onclick = () => { showRoom("manuals"); const t = $("#chat-input"); t.value = `About the walkthrough "${w.title}": `; t.focus(); };
+  if (isDraft) { $("#dr-save").onclick = saveDraft; $("#dr-discard").onclick = () => { draft = null; closeWalk(); }; }
+  const del = $("#wv-del");
+  if (del) del.onclick = async () => { if (del.dataset.arm !== "1") { del.dataset.arm = "1"; del.textContent = "Tap again to remove"; return; }
+    try { const db = await useCap("db"); await db.collection("walkthroughs").doc(w.id).delete(); toast("Draft removed"); closeWalk(); } catch { toast("Couldn't remove it. You may not have permission."); } };
+  try { if (!isDraft) history.replaceState(null, "", "#walk-" + w.id); } catch {}
+  window.scrollTo({ top: 0 });
+}
+function closeWalk() { $("#walk-view").hidden = true; $("#walk-index").hidden = false; renderCards(); try { history.replaceState(null, "", "#walkthroughs"); } catch {} }
+
+/* request a new walkthrough */
+let reqCtl = null;
+const SCHEMA = `{
+ "id": "kebab-case-id",
+ "title": "Short task title in the owner's words",
+ "summary": "One or two sentences on what this walkthrough does.",
+ "goal": "One sentence: what the owner will hear/have at the end.",
+ "category": "one of: Sequencing & clock | Sound design | Modulation | Effects & space | Sampling & looping | Generative | Performance | Recording & I/O | Module basics",
+ "level": "Beginner | Intermediate | Advanced",
+ "modules": ["slugs from the catalog, in order of use"],
+ "youNeed": ["cables, adapters or prep"],
+ "patch": [{"from": "Module · Jack", "to": "Module · Jack", "note": "short why or setting"}],
+ "sections": [{"title": "Phase title", "intro": "One plain sentence", "steps": [{"do": "One action with **exact control names**", "why": "Optional one-line reason"}], "note": "optional tip"}],
+ "troubleshooting": [{"problem": "...", "fix": "..."}],
+ "sources": [{"label": "Module manual notes › section", "url": "official manual URL if known"}]
+}`;
+async function draftWalk() {
+  const text = $("#req-input").value.trim(); if (!text || !sample) return;
+  const prog = $("#req-progress"); prog.innerHTML = ""; const step = m => { const d = document.createElement("div"); d.textContent = m; prog.appendChild(d); };
+  step("Reading the relevant manuals…");
+  $("#req-go").disabled = true; $("#req-stop").hidden = false; reqCtl = new AbortController();
+  const example = WALKS[0] ? JSON.stringify(WALKS[0]) : "";
+  const prompt = `${RULES()}
+
+TASK: Write a new walkthrough for the owner's walkthrough library, for this request:
+"${text}"
+
+Write it for the owner's exact rack, using modules from the catalog (prefer ones in the same case, and say when a cable must cross cases). Every walkthrough in the library looks and feels the same: plain language, short steps, one action per step, exact jack and knob names, a reason where it helps a beginner understand. 3–6 sections, 3–8 steps each. Include a patch list of every cable. Check details against the manuals with the tools before you commit to a control name or setting; if something isn't in the notes, phrase it carefully.
+
+Reply with ONLY one JSON object in this shape:
+${SCHEMA}
+
+Style reference (an existing walkthrough in the library):
+${example}
+
+Manual excerpts that matched the request:
+${contextFor(text, 8)}`;
+  try {
+    const w = await sample.json(prompt, { signal: reqCtl.signal, tools: toolsOK ? TOOLS(step) : undefined, modelTier: "default",
+      onText: () => { if (!prog.dataset.writing) { prog.dataset.writing = "1"; step("Writing the walkthrough…"); } } });
+    if (!w || typeof w !== "object" || !Array.isArray(w.sections) || !w.title) throw { code: "invalid_json" };
+    w.id = (String(w.id || w.title).toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "").slice(0, 60) || "walkthrough") + "-" + Date.now().toString(36).slice(-4);
+    w.modules = (w.modules || []).filter(s => DATA.modules[s]);
+    w.created = new Date().toISOString().slice(0, 10); w.origin = "Requested on the site: " + text; w._draft = true; w.request = text;
+    draft = w; prog.innerHTML = ""; openWalk(w.id, w);
+  } catch (e) {
+    prog.innerHTML = ""; if (e.code !== "cancelled") step(errCopy(e.code));
+    if (e.code === "not_granted") $("#req-off").hidden = false;
+  } finally { delete prog.dataset.writing; $("#req-go").disabled = false; $("#req-stop").hidden = true; reqCtl = null; }
+}
+async function saveDraft() {
+  if (!draft) return;
+  const db = await useCap("db").catch(() => null);
+  if (!db) { toast("Saving isn't available in this view."); return; }
+  const btn = $("#dr-save"); btn.disabled = true; btn.textContent = "Saving…";
+  try {
+    const { _draft, ...doc } = draft; doc.status = "draft"; doc.savedAt = new Date().toISOString();
+    await db.collection("walkthroughs").doc(draft.id).set(JSON.parse(JSON.stringify(doc)));
+    toast("Saved to your library"); const id = draft.id; draft = null; openWalk(id);
+  } catch (e) { btn.disabled = false; btn.textContent = "Save to library"; toast("Couldn't save. You may not have permission to add walkthroughs."); }
+}
+$("#req-go").onclick = draftWalk;
+$("#req-stop").onclick = () => reqCtl?.abort();
+
+/* ================= guided tour ================= */
+const TOUR = [
+  { room: "rack", el: "#cases .case", title: "Your rack, to scale", text: "Each case is drawn from your photos, with every module at its real width in HP. Tap any module to open it." },
+  { room: "rack", el: "#detail", title: "Module details", text: "Here you'll find what the selected module does, how it fits your rack, a link to its official manual and the walkthroughs that use it." },
+  { room: "rack", el: "#cat-chips", title: "Light up by job", text: "Pick a job such as Clocks, Filters or VCAs, and every module that can do it lights up in the drawing." },
+  { room: "rack", el: ".case-title .seg", title: "Drawing or photo", text: "Switch any case between the drawing and the photo you uploaded." },
+  { room: "manuals", el: "#ask", title: "Ask the manuals", text: "Ask a question in plain words. Claude answers from your modules' manuals and your setup, and says which manual sections it used." },
+  { room: "manuals", el: ".lib-side", title: "Search and read", text: "Search every manual at once, or pick a module to read its notes from start to finish." },
+  { room: "walkthroughs", el: "#cards", title: "Walkthroughs", text: "Step-by-step patching guides for your rack, all in the same format. Tick off steps as you go." },
+  { room: "walkthroughs", el: "#request", title: "Request a walkthrough", text: "Describe a sound or technique you want to learn. Claude writes a walkthrough for your exact modules, and you can save it to the library." },
+  { room: null, el: "#tour-btn", title: "That's the tour", text: "Run it again any time with this button." },
+];
+let tourAt = -1, tourEls = null, TOUR_ON = TOUR;
+function startTour() {
+  closeWalk(); tourAt = 0; TOUR_ON = TOUR.filter(st => document.querySelector(st.el));
+  if (!tourEls) {
+    const shade = document.createElement("div"); shade.className = "tour-shade";
+    const spot = document.createElement("div"); spot.className = "tour-spot";
+    const card = document.createElement("div"); card.className = "tour-card"; card.setAttribute("role", "dialog"); card.setAttribute("aria-modal", "true"); card.setAttribute("aria-labelledby", "tour-h");
+    document.body.append(shade, spot, card); tourEls = { shade, spot, card };
+    shade.onclick = endTour;
+    window.addEventListener("resize", placeTour); window.addEventListener("scroll", placeTour, { passive: true });
+    document.addEventListener("keydown", e => { if (tourAt < 0) return; if (e.key === "Escape") endTour(); if (e.key === "ArrowRight") stepTour(1); if (e.key === "ArrowLeft") stepTour(-1); });
+  }
+  Object.values(tourEls).forEach(e => e.hidden = false);
+  showTourStep();
+}
+function stepTour(d) { const n = tourAt + d; if (n < 0) return; if (n >= TOUR_ON.length) return endTour(); tourAt = n; showTourStep(); }
+function endTour() { tourAt = -1; store.set("toured", true); if (tourEls) Object.values(tourEls).forEach(e => e.hidden = true); showRoom("rack"); $("#tour-btn").focus(); }
+function showTourStep() {
+  const st = TOUR_ON[tourAt];
+  if (st.room) showRoom(st.room, false);
+  const { card } = tourEls;
+  card.innerHTML = `<div class="eyebrow">Tour · ${tourAt + 1} of ${TOUR_ON.length}</div><h3 id="tour-h">${esc(st.title)}</h3><p>${esc(st.text)}</p>
+    <div class="tour-nav"><div class="tour-dots">${TOUR_ON.map((_, i) => `<i class="${i === tourAt ? "on" : ""}"></i>`).join("")}</div><span class="sp"></span>
+    ${tourAt < TOUR_ON.length - 1 ? `<button class="btn ghost" data-t="skip">Skip</button>` : ""}${tourAt ? `<button class="btn" data-t="back">Back</button>` : ""}
+    <button class="btn primary" data-t="next">${tourAt === TOUR_ON.length - 1 ? "Done" : "Next"}</button></div>`;
+  card.querySelector('[data-t="next"]').onclick = () => stepTour(1);
+  card.querySelector('[data-t="back"]')?.addEventListener("click", () => stepTour(-1));
+  card.querySelector('[data-t="skip"]')?.addEventListener("click", endTour);
+  const el = $(st.el);
+  if (el) { const r = el.getBoundingClientRect(); const top = r.top + window.scrollY - (st.room ? 110 : 0);
+    window.scrollTo({ top: Math.max(0, r.height > innerHeight * .6 ? top : top - (innerHeight - r.height) / 3), behavior: "instant" }); }
+  placeTour(); card.querySelector('[data-t="next"]').focus({ preventScroll: true });
+}
+function placeTour() {
+  if (tourAt < 0 || !tourEls) return;
+  const el = $(TOUR_ON[tourAt].el); const { spot, card } = tourEls; const pad = 6;
+  if (!el) { spot.style.cssText = "left:50%;top:40%;width:0;height:0"; card.style.left = Math.max(16, (innerWidth - card.offsetWidth) / 2) + "px"; card.style.top = "40%"; return; }
+  const r = el.getBoundingClientRect();
+  const vis = { top: Math.max(r.top, 8), bottom: Math.min(r.bottom, innerHeight - 8) };
+  spot.style.left = (r.left - pad) + "px"; spot.style.top = (vis.top - pad) + "px";
+  spot.style.width = (r.width + pad * 2) + "px"; spot.style.height = Math.max(0, vis.bottom - vis.top + pad * 2) + "px";
+  const cw = card.offsetWidth, ch = card.offsetHeight, gap = 14;
+  let top = vis.bottom + pad + gap;
+  if (top + ch > innerHeight - 12) top = vis.top - pad - gap - ch;
+  if (top < 12) top = innerHeight - ch - 16;
+  let left = Math.min(Math.max(16, r.left), innerWidth - cw - 16);
+  card.style.top = top + "px"; card.style.left = left + "px";
+}
+$("#tour-btn").onclick = startTour;
+
+/* ================= boot ================= */
+async function boot() {
+  const [mods, chunks, walks] = window.__RACK_DATA || await Promise.all(["data/modules.json", "data/manuals.json", "data/walkthroughs.json"].map(u => fetch(u).then(r => r.json())));
+  DATA = mods; CHUNKS = chunks; WALKS = walks;
+  if (!DATA || !DATA.cases || !DATA.cases.length) { showSetupNeeded(); return; }
+  if (DATA.rackName) { $("#rack-name").textContent = DATA.rackName; document.title = DATA.rackName + " · RackApp"; }
+  $("#rack-eyebrow").textContent = `${DATA.cases.length === 1 ? "Your case" : DATA.cases.length + " cases"}, drawn to HP scale`;
+  const real = Object.values(DATA.modules).filter(m => m.kind !== "power");
+  const rackMods = real.filter(m => m.kind !== "desk");
+  const pl = (n, w) => `${n} ${w}${n === 1 ? "" : "s"}`; const nDesk = real.length - rackMods.length;
+  $("#stat").textContent = [pl(rackMods.length, "module"), rackMods.reduce((a, m) => a + m.hp, 0) + " HP", pl(DATA.cases.length, "case"), nDesk ? pl(nDesk, "controller") : ""].filter(Boolean).join(" · ");
+  const nMan = real.filter(m => m.hasManual).length;
+  $("#man-sub").textContent = `Notes from the official manuals for ${nMan} of ${real.length} modules and controllers. Search across all of them, read one start to finish, or ask a question and get an answer drawn from the manuals and your own setup.`;
+  buildIndex();
+  renderCatChips(); renderRack();
+  const sel = store.get("sel", null); if (sel && DATA.modules[sel]) selectModule(sel); else emptyDetail();
+  renderManFilter(); renderManList();
+  const firstMod = manualModules()[0]?.[0]; const man = store.get("man", firstMod); if (DATA.modules[man] || firstMod) openManual(DATA.modules[man] ? man : firstMod);
+  renderWalkSelect(); renderCards(); renderThread(); renderSuggests();
+  const h = (location.hash || "").slice(1);
+  if (h.startsWith("walk-")) { showRoom("walkthroughs", false); openWalk(h.slice(5)); }
+  else if (["rack", "manuals", "walkthroughs"].includes(h)) showRoom(h, false);
+  else showRoom(store.get("room", "rack"), false);
+  window.scrollTo({ top: 0 });
+  $("#tour-btn").hidden = false;
+  if (!store.get("toured", false)) setTimeout(() => startTour(), 600);
+
+  // Claude features light up when available
+  useCap("sample").then(async s => {
+    sample = s;
+    if (!s) { $("#chat-off").hidden = false; $("#req-off").hidden = false; $("#chat-send").disabled = true; $("#req-go").disabled = true; return; }
+    try { toolsOK = !!(await s.limits()).tools; } catch { toolsOK = false; }
+  }).catch(() => { $("#chat-off").hidden = false; $("#req-off").hidden = false; });
+  useCap("db").then(db => {
+    if (!db) return;
+    db.collection("walkthroughs").onSnapshot(snap => {
+      DBWALKS = snap.docs.map(d => ({ ...d.data(), id: d.id, _draft: d.data().status === "draft" })).filter(w => w.title && Array.isArray(w.sections))
+        .sort((a, b) => String(b.created).localeCompare(String(a.created)));
+      renderWalkSelect(); if (!$("#walk-index").hidden) renderCards(); if (selected) selectModule(selected);
+    }, () => {});
+  }).catch(() => {});
+}
+function showSetupNeeded() {
+  $$(".room").forEach(r => r.hidden = true); $(".tabs").hidden = true;
+  $("main").insertAdjacentHTML("afterbegin", `<section class="setup-needed"><div class="eyebrow">Welcome to RackApp</div><h2>Your rack isn't set up yet</h2>
+    <p>RackApp builds itself from photos of your own Eurorack system. Open the RackApp folder in Claude Code and say <b>“set up my rack”</b>. Claude will ask for your photos, check the module list with you, gather the manuals and publish this app with your data.</p>
+    <p class="muted">See the README in the RackApp repository for the full steps.</p></section>`);
+}
+boot().catch(err => { console.error(err); showSetupNeeded(); });
+})();
+</script>
