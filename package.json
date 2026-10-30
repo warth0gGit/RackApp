@@ -1,6 +1,7 @@
 {
   "name": "rackapp",
   "private": true,
+  "license": "MIT",
   "description": "Turn photos of your Eurorack rack into a personal app with manuals, walkthroughs and a guided tour.",
   "scripts": {
     "build:example": "python3 tools/build.py example-rack dist",

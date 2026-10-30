@@ -62,3 +62,7 @@ Everything about your rack lives in `my-rack/`, which is git-ignored, so it is n
 | `tests/smoke.js` | Browser test: `npm install && npm test` |
 
 Manual notes are paraphrased from the makers' official manuals and link back to them. They're study notes, not replacements: when it matters, check the official manual.
+
+## License
+
+MIT. See [LICENSE](LICENSE). Manual notes summarise the makers' official manuals, which remain the property of their makers.
